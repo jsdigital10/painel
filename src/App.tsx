@@ -28,7 +28,22 @@ export default function App() {
   const [session, setSession] = useState<ConnectionSession | null>(() => {
     try {
       const saved = localStorage.getItem('barber_session');
-      return saved ? JSON.parse(saved) : null;
+      if (saved) return JSON.parse(saved);
+      const shopSaved = localStorage.getItem('barber_shop');
+      if (shopSaved) {
+        const shop = JSON.parse(shopSaved);
+        const shopId = shop.barbershopId || shop.id;
+        if (shopId && shop.domain) {
+          return {
+            barbershopId: shopId,
+            barbershopName: shop.name || 'Barbearia',
+            domain: shop.domain,
+            token: 'device_token_' + shopId,
+            connectedAt: new Date().toISOString(),
+          };
+        }
+      }
+      return null;
     } catch {
       return null;
     }
@@ -37,7 +52,23 @@ export default function App() {
   const [currentBarbershop, setCurrentBarbershop] = useState<Barbershop | null>(() => {
     try {
       const saved = localStorage.getItem('barber_shop');
-      return saved ? JSON.parse(saved) : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const resolvedId = parsed.barbershopId || parsed.id;
+        return { ...parsed, id: resolvedId, barbershopId: resolvedId };
+      }
+      const sessionSaved = localStorage.getItem('barber_session');
+      if (sessionSaved) {
+        const sess = JSON.parse(sessionSaved);
+        return {
+          id: sess.barbershopId,
+          barbershopId: sess.barbershopId,
+          name: sess.barbershopName || 'Barbearia',
+          domain: sess.domain,
+          active: true,
+        };
+      }
+      return null;
     } catch {
       return null;
     }
@@ -53,6 +84,8 @@ export default function App() {
   });
 
   const [isPushRegistered, setIsPushRegistered] = useState<boolean>(false);
+  const [isRealtimeActive, setIsRealtimeActive] = useState<boolean>(false);
+  const [lastEventTime, setLastEventTime] = useState<string | null>(null);
 
   // Active Modals & Banners
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
@@ -125,6 +158,8 @@ export default function App() {
       (fetchedAppointments) => {
         setIsLoading(false);
         setIsOnline(true);
+        setIsRealtimeActive(true);
+        setLastEventTime(new Date().toLocaleTimeString('pt-BR'));
 
         // Check if any brand new appointment arrived after initial load
         if (initialLoadDoneRef.current) {
@@ -194,19 +229,25 @@ export default function App() {
 
   // Handle successful connection from ConnectScreen
   const handleConnected = (shop: Barbershop, token: string) => {
+    const resolvedId = shop.barbershopId || shop.id;
+    const normalizedShop: Barbershop = {
+      ...shop,
+      id: resolvedId,
+      barbershopId: resolvedId,
+    };
     const newSession: ConnectionSession = {
-      barbershopId: shop.id,
-      barbershopName: shop.name,
+      barbershopId: resolvedId,
+      barbershopName: shop.name || 'Barbearia',
       domain: shop.domain,
       token,
       connectedAt: new Date().toISOString(),
     };
 
     localStorage.setItem('barber_session', JSON.stringify(newSession));
-    localStorage.setItem('barber_shop', JSON.stringify(shop));
+    localStorage.setItem('barber_shop', JSON.stringify(normalizedShop));
 
     setSession(newSession);
-    setCurrentBarbershop(shop);
+    setCurrentBarbershop(normalizedShop);
     initialLoadDoneRef.current = false;
     knownAptIdsRef.current.clear();
   };
@@ -290,15 +331,30 @@ export default function App() {
     return Math.max(unreadApts, unreadNotifs);
   }, [appointments, notifications]);
 
-  // 1. Not connected state -> Connect Screen
-  if (!session || !currentBarbershop) {
+  // Active Barbershop with mutual session fallback
+  const activeBarbershop: Barbershop | null =
+    currentBarbershop ||
+    (session
+      ? {
+          id: session.barbershopId,
+          barbershopId: session.barbershopId,
+          name: session.barbershopName || 'Barbearia',
+          domain: session.domain,
+          active: true,
+        }
+      : null);
+
+  // 1. Not connected state -> Connect Screen (ONLY if not logged in)
+  if (!session && !activeBarbershop) {
     return <ConnectScreen onConnected={handleConnected} />;
   }
 
-  // 2. Initial Loading state -> Skeleton Loader
-  if (isLoading && appointments.length === 0) {
+  // 2. Initial Loading state -> Skeleton Loader (Only while activeBarbershop is loading initial batch)
+  if (isLoading && appointments.length === 0 && !activeBarbershop) {
     return <SkeletonLoader />;
   }
+
+  const effectiveShop = activeBarbershop!;
 
   return (
     <div className="min-h-screen bg-[#05070c] text-slate-100 selection:bg-cyan-500 selection:text-white pb-12 relative overflow-x-hidden">
@@ -315,7 +371,7 @@ export default function App() {
 
       {/* Header */}
       <Header
-        barbershop={currentBarbershop}
+        barbershop={effectiveShop}
         isOnline={isOnline}
         unreadCount={unreadCount}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
@@ -327,7 +383,7 @@ export default function App() {
 
       {/* Activate Notifications Highlight Card */}
       <NotificationsCard
-        barbershopId={currentBarbershop.id}
+        barbershopId={effectiveShop.id}
         isRegistered={isPushRegistered}
         onRegistered={() => setIsPushRegistered(true)}
       />
@@ -372,9 +428,12 @@ export default function App() {
       {/* Modal: Configurações */}
       {isSettingsOpen && (
         <SettingsModal
-          barbershop={currentBarbershop}
+          barbershop={effectiveShop}
           isPushEnabled={isPushRegistered}
           soundEnabled={soundEnabled}
+          appointmentsCount={appointments.length}
+          isRealtimeActive={isRealtimeActive}
+          lastEventTime={lastEventTime}
           onToggleSound={handleToggleSound}
           onDisconnect={handleDisconnect}
           onClose={() => setIsSettingsOpen(false)}

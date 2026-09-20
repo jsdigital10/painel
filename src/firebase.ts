@@ -103,7 +103,7 @@ export async function ensureBarberKaikExists(): Promise<void> {
     if (!docSnap.exists()) {
       await setDoc(docRef, {
         barbershopId: 'barber_kaik',
-        name: 'Barbearia',
+        name: 'Barbearia Kaik',
         domain: 'kaikagenda.vercel.app',
         active: true,
         services: STANDARD_SERVICES,
@@ -227,21 +227,57 @@ export function subscribeToAppointments(
   onUpdate: (appointments: Appointment[]) => void,
   onError?: (err: unknown) => void
 ) {
-  const q = query(
+  if (!barbershopId) {
+    console.error('[INTEGRAÇÃO] barbershopId ausente.');
+    return () => {};
+  }
+
+  console.log(`[FIREBASE] Conectando listener em tempo real para: ${barbershopId}`);
+
+  // Query 1: Root appointments collection filtered by barbershopId (Exact user specification)
+  const rootQuery = query(
     collection(db, 'appointments'),
     where('barbershopId', '==', barbershopId)
   );
 
-  return onSnapshot(
-    q,
+  // Query 2: Subcollection barbershops/{barbershopId}/appointments (Biosite subcollection compatibility)
+  const subCollectionRef = collection(db, 'barbershops', barbershopId, 'appointments');
+
+  let rootAppointments: Appointment[] = [];
+  let subAppointments: Appointment[] = [];
+
+  const mergeAndNotify = () => {
+    const map = new Map<string, Appointment>();
+    // Subcollection appointments
+    subAppointments.forEach((a) => map.set(a.appointmentId, a));
+    // Root appointments (priority)
+    rootAppointments.forEach((a) => map.set(a.appointmentId, a));
+
+    const merged = Array.from(map.values());
+
+    // Sort: unread first, then newest createdAt desc
+    merged.sort((a, b) => {
+      if (!a.readByBarber && b.readByBarber) return -1;
+      if (a.readByBarber && !b.readByBarber) return 1;
+      const timeA = new Date(a.createdAt).getTime() || 0;
+      const timeB = new Date(b.createdAt).getTime() || 0;
+      return timeB - timeA;
+    });
+
+    console.log(`[AGENDA] ${merged.length} agendamentos encontrados para ${barbershopId}`);
+    onUpdate(merged);
+  };
+
+  const unsubRoot = onSnapshot(
+    rootQuery,
     (snapshot) => {
-      const appointments: Appointment[] = [];
+      const list: Appointment[] = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        appointments.push({
+        list.push({
           id: docSnap.id,
           appointmentId: data.appointmentId || docSnap.id,
-          barbershopId: data.barbershopId,
+          barbershopId: data.barbershopId || barbershopId,
           customerName: data.customerName || 'Cliente',
           customerPhone: data.customerPhone || '',
           serviceName: data.serviceName || 'Serviço',
@@ -253,13 +289,49 @@ export function subscribeToAppointments(
           createdAt: data.createdAt || new Date().toISOString(),
         });
       });
-      onUpdate(appointments);
+      rootAppointments = list;
+      mergeAndNotify();
     },
     (error) => {
+      console.error('[FIREBASE] Falha ao carregar appointments:', error);
       handleFirestoreError(error, OperationType.LIST, 'appointments');
       if (onError) onError(error);
     }
   );
+
+  const unsubSub = onSnapshot(
+    subCollectionRef,
+    (snapshot) => {
+      const list: Appointment[] = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        list.push({
+          id: docSnap.id,
+          appointmentId: data.appointmentId || docSnap.id,
+          barbershopId: data.barbershopId || barbershopId,
+          customerName: data.customerName || 'Cliente',
+          customerPhone: data.customerPhone || '',
+          serviceName: data.serviceName || 'Serviço',
+          price: Number(data.price) || 0,
+          date: data.date || '',
+          time: data.time || '',
+          status: data.status || 'confirmed',
+          readByBarber: Boolean(data.readByBarber),
+          createdAt: data.createdAt || new Date().toISOString(),
+        });
+      });
+      subAppointments = list;
+      mergeAndNotify();
+    },
+    (error) => {
+      console.warn('[FIREBASE] Subcollection listener warning (fallback to root):', error?.message || error);
+    }
+  );
+
+  return () => {
+    unsubRoot();
+    unsubSub();
+  };
 }
 
 // Mark appointment as read by barber

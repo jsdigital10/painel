@@ -7,34 +7,37 @@ service cloud.firestore {
       return id is string && id.size() > 0 && id.size() <= 128;
     }
 
-    // Barbershops collection (queried by domain or retrieved by ID)
+    // Barbershops collection and all subcollections (appointments, publicAvailability, appointmentEvents)
     match /barbershops/{barbershopId} {
-      allow get, list: if true;
-      allow create, update, delete: if true;
+      allow read, write: if true;
+      match /{allChildren=**} {
+        allow read, write: if true;
+      }
     }
 
-    // Appointments collection (filtered by barbershopId in real-time)
+    // Root appointments collection (filtered by barbershopId)
     match /appointments/{appointmentId} {
-      allow get, list: if true;
-      allow create, update, delete: if true;
+      allow read, write: if true;
     }
 
     // Devices registered for FCM push notifications
     match /devices/{deviceId} {
-      allow get, list: if true;
-      allow create, update, delete: if true;
+      allow read, write: if true;
     }
 
     // Notifications history
     match /notifications/{notificationId} {
-      allow get, list: if true;
-      allow create, update, delete: if true;
+      allow read, write: if true;
     }
 
     // Connections pairing
     match /connections/{connectionId} {
-      allow get, list: if true;
-      allow create, update, delete: if true;
+      allow read, write: if true;
+    }
+
+    // Fallback for any other test or system collections
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }

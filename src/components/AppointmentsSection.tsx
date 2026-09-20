@@ -25,7 +25,7 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
   appointments,
   onSelectAppointment,
 }) => {
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('Hoje');
+  const [activeFilter, setActiveFilter] = useState<FilterTab>('Próximos');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('recent');
 
@@ -110,7 +110,7 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="🔎 Buscar por cliente, serviço ou horário..."
-          className="w-full bg-[#0a0f1c] border border-slate-800 rounded-xl pl-9.5 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-500/30 transition shadow-inner font-sans"
+          className="w-full bg-[#0a0f1c] border border-slate-800 rounded-xl pl-9.5 pr-4 py-2.5 text-base sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-500/30 transition shadow-inner font-sans touch-manipulation"
         />
         {searchQuery && (
           <button

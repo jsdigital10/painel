@@ -13,15 +13,19 @@ import {
   PlusCircle,
   AlertTriangle,
 } from 'lucide-react';
-import { sendLocalTestNotification } from '../utils/notifications';
+import { sendLocalTestNotification, triggerBackendTestPush } from '../utils/notifications';
 import { playNewAppointmentChime } from '../utils/audio';
 import { createNewAppointment, STANDARD_SERVICES } from '../firebase';
+import { DiagnosticSection } from './DiagnosticSection';
 import type { Barbershop } from '../types';
 
 interface SettingsModalProps {
   barbershop: Barbershop;
   isPushEnabled: boolean;
   soundEnabled: boolean;
+  appointmentsCount?: number;
+  isRealtimeActive?: boolean;
+  lastEventTime?: string | null;
   onToggleSound: () => void;
   onDisconnect: () => void;
   onClose: () => void;
@@ -32,6 +36,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   barbershop,
   isPushEnabled,
   soundEnabled,
+  appointmentsCount = 0,
+  isRealtimeActive = true,
+  lastEventTime = null,
   onToggleSound,
   onDisconnect,
   onClose,
@@ -42,7 +49,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [testSuccessMessage, setTestSuccessMessage] = useState<string | null>(null);
   const [isSimulatingBooking, setIsSimulatingBooking] = useState(false);
 
-  // Test Notification
+  // Test Notification via real backend
   const handleTestNotification = async () => {
     setIsTestingNotification(true);
     setTestSuccessMessage(null);
@@ -52,10 +59,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       playNewAppointmentChime(true);
     }
 
-    await sendLocalTestNotification();
+    const result = await triggerBackendTestPush(barbershop.id);
 
     setIsTestingNotification(false);
-    setTestSuccessMessage('Notificação de teste enviada!');
+    if (result.success) {
+      setTestSuccessMessage('✓ Push enviado pelo Firebase');
+    } else {
+      setTestSuccessMessage('✕ Falha no envio');
+    }
     setTimeout(() => setTestSuccessMessage(null), 4000);
   };
 
@@ -179,43 +190,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
           </div>
 
-          {/* Testar Notificação Button */}
-          <div>
-            <button
-              type="button"
-              onClick={handleTestNotification}
-              disabled={isTestingNotification}
-              className="w-full py-3 px-4 rounded-xl font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-            >
-              <Bell className="w-4 h-4 text-cyan-400" />
-              <span>TESTAR NOTIFICAÇÃO</span>
-            </button>
-            {testSuccessMessage && (
-              <p className="mt-1.5 text-center text-[11px] text-emerald-400 font-semibold animate-slide-down">
-                ✓ {testSuccessMessage}
-              </p>
-            )}
-          </div>
-
-          {/* Simular Agendamento do Biosite (Teste de ponta a ponta) */}
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={handleSimulateBiositeBooking}
-              disabled={isSimulatingBooking}
-              className="w-full py-2.5 px-4 rounded-xl font-semibold text-cyan-300 bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-800/60 transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-            >
-              <PlusCircle className="w-4 h-4 text-cyan-400" />
-              <span>
-                {isSimulatingBooking
-                  ? 'Simulando reserva...'
-                  : 'Simular Reserva do Biosite (Teste Realtime)'}
-              </span>
-            </button>
-            <p className="text-[10px] text-slate-500 text-center mt-1">
-              Simula um cliente agendando pelo biosite para testar a experiência visual e sonora.
-            </p>
-          </div>
+          {/* Modo de Diagnóstico da Integração */}
+          <DiagnosticSection
+            barbershop={barbershop}
+            appointmentsCount={appointmentsCount}
+            isRealtimeActive={isRealtimeActive}
+            lastEventTime={lastEventTime}
+          />
 
           {/* Sair / Desconectar Barbearia */}
           <div className="pt-2 border-t border-slate-800">

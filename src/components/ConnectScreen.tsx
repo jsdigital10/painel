@@ -108,7 +108,7 @@ export const ConnectScreen: React.FC<ConnectScreenProps> = ({ onConnected }) => 
                   autoComplete="url"
                   autoCapitalize="none"
                   spellCheck={false}
-                  className="w-full bg-[#0b101b] border border-slate-700/80 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/25 transition shadow-inner font-mono"
+                  className="w-full bg-[#0b101b] border border-slate-700/80 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 text-base focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/25 transition shadow-inner font-mono touch-manipulation"
                 />
               </div>
             </div>
