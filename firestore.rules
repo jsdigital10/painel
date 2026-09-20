@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    // Barbershops collection (queried by domain or retrieved by ID)
+    match /barbershops/{barbershopId} {
+      allow get, list: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Appointments collection (filtered by barbershopId in real-time)
+    match /appointments/{appointmentId} {
+      allow get, list: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Devices registered for FCM push notifications
+    match /devices/{deviceId} {
+      allow get, list: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Notifications history
+    match /notifications/{notificationId} {
+      allow get, list: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Connections pairing
+    match /connections/{connectionId} {
+      allow get, list: if true;
+      allow create, update, delete: if true;
+    }
+  }
+}
+

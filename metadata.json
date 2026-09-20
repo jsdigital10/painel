@@ -1,0 +1,6 @@
+{
+  "name": "Central de Agendamentos",
+  "description": "Painel do Barbeiro em tempo real para acompanhamento de novos agendamentos, horários, clientes e notificações push.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

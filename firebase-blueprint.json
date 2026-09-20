@@ -1,0 +1,104 @@
+{
+  "entities": {
+    "Barbershop": {
+      "title": "Barbershop",
+      "description": "Information about a barbershop registered in the system",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Barbershop unique ID" },
+        "name": { "type": "string", "description": "Barbershop commercial name" },
+        "domain": { "type": "string", "description": "Custom biosite domain" },
+        "pairingPin": { "type": "string", "description": "Pairing security PIN code" },
+        "phone": { "type": "string", "description": "Contact phone number" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "name", "domain"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Appointment booking created by customer on the biosite",
+      "type": "object",
+      "properties": {
+        "appointmentId": { "type": "string", "description": "Unique appointment identifier" },
+        "barbershopId": { "type": "string", "description": "Barbershop identifier" },
+        "customerName": { "type": "string", "description": "Customer name" },
+        "customerPhone": { "type": "string", "description": "Customer WhatsApp phone" },
+        "serviceName": { "type": "string", "description": "Service name booked" },
+        "price": { "type": "number", "description": "Price in BRL" },
+        "date": { "type": "string", "description": "Date of appointment" },
+        "time": { "type": "string", "description": "Time of appointment" },
+        "status": { "type": "string", "description": "Status: confirmed, completed, cancelled" },
+        "readByBarber": { "type": "boolean", "description": "Whether barber has viewed this appointment" },
+        "createdAt": { "type": "string", "description": "Timestamp of booking creation" }
+      },
+      "required": ["appointmentId", "barbershopId", "customerName", "serviceName", "price", "date", "time", "status"]
+    },
+    "Device": {
+      "title": "Device",
+      "description": "Authorized barber device registered for FCM push notifications",
+      "type": "object",
+      "properties": {
+        "deviceId": { "type": "string", "description": "Unique device identifier" },
+        "barbershopId": { "type": "string", "description": "Associated barbershop ID" },
+        "fcmToken": { "type": "string", "description": "FCM or WebPush subscription token" },
+        "notificationsEnabled": { "type": "boolean", "description": "Notification enabled status" },
+        "createdAt": { "type": "string", "description": "Registration timestamp" },
+        "lastSeen": { "type": "string", "description": "Last activity timestamp" }
+      },
+      "required": ["deviceId", "barbershopId", "notificationsEnabled"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Notification record for historical and push idempotency",
+      "type": "object",
+      "properties": {
+        "notificationId": { "type": "string", "description": "Unique notification identifier" },
+        "barbershopId": { "type": "string", "description": "Barbershop ID" },
+        "appointmentId": { "type": "string", "description": "Related appointment ID" },
+        "title": { "type": "string", "description": "Notification title" },
+        "body": { "type": "string", "description": "Notification body" },
+        "amount": { "type": "number", "description": "Amount in BRL" },
+        "serviceName": { "type": "string", "description": "Service name" },
+        "time": { "type": "string", "description": "Appointment time" },
+        "read": { "type": "boolean", "description": "Read status" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["notificationId", "barbershopId", "title", "body", "read", "createdAt"]
+    },
+    "Connection": {
+      "title": "Connection",
+      "description": "Active authorized connection pairing device with barbershop",
+      "type": "object",
+      "properties": {
+        "connectionId": { "type": "string", "description": "Unique connection token ID" },
+        "barbershopId": { "type": "string", "description": "Target barbershop ID" },
+        "domain": { "type": "string", "description": "Validated domain" },
+        "token": { "type": "string", "description": "Secure auth token" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["connectionId", "barbershopId", "domain", "token"]
+    }
+  },
+  "firestore": {
+    "/barbershops/{barbershopId}": {
+      "schema": "Barbershop",
+      "description": "Stores barbershop configuration and details"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Stores appointments booked on the biosite"
+    },
+    "/devices/{deviceId}": {
+      "schema": "Device",
+      "description": "Stores registered devices for push notifications"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Stores appointment notifications log"
+    },
+    "/connections/{connectionId}": {
+      "schema": "Connection",
+      "description": "Stores authorized device connection sessions"
+    }
+  }
+}
